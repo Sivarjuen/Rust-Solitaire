@@ -1,8 +1,10 @@
 use bevy::asset::LoadState;
 use bevy::prelude::*;
 use strum_macros::EnumIter;
-
+use crate::board::{BoardState, Slot};
 use crate::deck::Deck;
+use crate::events::{HoverEnterEvent, HoverExitEvent};
+use crate::util::{HoverState, Hoverable};
 
 pub const CARD_WIDTH: f32 = 352.0;
 pub const CARD_HEIGHT: f32 = 512.0;
@@ -15,11 +17,13 @@ impl Plugin for CardPlugin {
         app.init_resource::<Deck>()
             .init_resource::<AssetsLoading>()
             .add_systems(Startup, init_load_card_assets)
+            .add_systems(PostStartup, setup_cards)
             .add_systems(
                 Update,
                 (
                     check_assets_ready.run_if(resource_exists::<AssetsLoading>),
-                    change_sprite_image,
+                    handle_hover_enter,
+                    handle_hover_exit
                 ),
             );
     }
@@ -102,7 +106,13 @@ pub struct CardBundle {
 }
 
 impl CardBundle {
-    pub fn new(card: Card, asset_server: &Res<AssetServer>, transform: Transform) -> Self {
+    pub fn new(card: &Card, asset_server: &Res<AssetServer>, transform: Transform) -> Self {
+        let image = if card.flipped {
+            card.back_asset(asset_server)
+        } else {
+            card.asset(asset_server)
+        };
+
         CardBundle {
             card: card.clone(),
             sprite: Sprite {
@@ -110,10 +120,11 @@ impl CardBundle {
                     x: CARD_WIDTH * CARD_SCALE,
                     y: CARD_HEIGHT * CARD_SCALE,
                 }),
-                image: card.asset(asset_server),
+                image,
                 ..default()
             },
             transform,
+
         }
     }
 }
@@ -153,44 +164,76 @@ fn check_assets_ready(
     if load_count == deck.get_cards().len() {
         println!("Loaded all {} card assets.", load_count);
         commands.remove_resource::<AssetsLoading>();
-
-        commands.spawn(CardBundle::new(
-            Card {
-                rank: Rank::King,
-                suit: Suit::Diamonds,
-                flipped: false,
-            },
-            &server,
-            Transform::default(),
-        ));
-        commands.spawn(CardBundle::new(
-            Card {
-                rank: Rank::Nine,
-                suit: Suit::Spades,
-                flipped: false,
-            },
-            &server,
-            Transform::from_xyz(100.0, 0.0, 0.0),
-        ));
     }
 }
 
-// FIXME: this is temporary
-fn change_sprite_image(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    asset_server: Res<AssetServer>,
-    mut query: Query<(&mut Sprite, &mut Card)>,
+fn setup_cards(
+    mut commands: Commands,
+    mut board_state: ResMut<BoardState>,
+    mut deck: ResMut<Deck>,
+    server: Res<AssetServer>,
+    slots: Query<(&Transform, &Slot)>
 ) {
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        for (mut sprite, mut card) in query.iter_mut() {
-            let mut new_texture = card.asset(&asset_server);
-            if card.flipped {
-                new_texture = card.back_asset(&asset_server);
-            }
-            card.flipped = !card.flipped;
-            sprite.image = new_texture.clone();
+    let play_piles = &mut board_state.play_piles;
+    let mut target_positions = vec![Vec3::default(); play_piles.len()];
+    for  (slot_transform, slot) in slots.iter() {
+        match slot {
+            Slot::Play(n) => {
+                target_positions[*n as usize] = slot_transform.translation.clone();
+            },
+            _ => ()
         }
+    }
+    for i in 0..play_piles.len() {
+        let y_offset = (i * 40) as f32;
+        for j in i.. play_piles.len() {
+            let Some(mut drawn_card) = deck.play() else {
+                return;
+            };
 
-        println!("Sprite image changed!");
+            if j == i {
+                drawn_card.flipped = false
+            }
+
+            let transform = Transform::from_xyz(
+                target_positions[j].x,
+                target_positions[j].y - y_offset,
+                i as f32
+            );
+
+            commands.spawn((
+                CardBundle::new(
+                    &drawn_card,
+                    &server,
+                    transform
+                ),
+                Hoverable,
+                HoverState::default()
+            ));
+
+            play_piles[j].push(drawn_card);
+        }
+    }
+}
+
+fn handle_hover_enter(
+    mut events: EventReader<HoverEnterEvent>,
+    mut query: Query<&mut Transform>,
+) {
+    for HoverEnterEvent(entity) in events.read() {
+        if let Ok(mut transform) = query.get_mut(*entity) {
+            transform.scale = Vec3::splat(1.1);
+        }
+    }
+}
+
+fn handle_hover_exit(
+    mut events: EventReader<HoverExitEvent>,
+    mut query: Query<&mut Transform>
+) {
+    for HoverExitEvent(entity) in events.read() {
+        if let Ok(mut transform) = query.get_mut(*entity) {
+            transform.scale = Vec3::splat(1.0);
+        }
     }
 }

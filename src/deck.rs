@@ -1,5 +1,7 @@
+#![allow(dead_code)]
+
 use bevy::prelude::*;
-use rand::{prelude::*, seq::SliceRandom};
+use rand::seq::SliceRandom;
 use strum::IntoEnumIterator;
 
 use crate::card::{Card, Rank, Suit};

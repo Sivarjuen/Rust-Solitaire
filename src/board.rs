@@ -13,8 +13,8 @@ impl Plugin for BoardPlugin {
 
 #[derive(Resource, PartialEq, Debug)]
 pub struct BoardState {
-    home_piles: Vec<Vec<Card>>,
-    play_piles: Vec<Vec<Card>>,
+    pub home_piles: Vec<Vec<Card>>,
+    pub play_piles: Vec<Vec<Card>>,
 }
 
 impl Default for BoardState {
@@ -26,16 +26,13 @@ impl Default for BoardState {
     }
 }
 
-#[derive(PartialEq, Debug)]
-pub enum SlotId {
+#[derive(Component, PartialEq, Debug)]
+pub enum Slot {
     Deck,
     Draw,
     Home(u32),
     Play(u32),
 }
-
-#[derive(Component)]
-pub struct Slot(pub SlotId);
 
 fn setup_background(mut commands: Commands, asset_server: Res<AssetServer>) {
     let texture_handle = asset_server.load("bg.png");
@@ -76,7 +73,7 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
                 ..default()
             },
             Transform::from_xyz(x, bottom_row_y, -1.0),
-            Slot(SlotId::Play(i)),
+            Slot::Play(i),
             GlobalTransform::default(),
         ));
 
@@ -92,14 +89,14 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
                         ..default()
                     },
                     Transform::from_xyz(x, top_row_y, -1.0),
-                    Slot(SlotId::Deck),
+                    Slot::Deck,
                     GlobalTransform::default(),
                 ));
             }
             1 => {
                 commands.spawn((
                     Transform::from_xyz(x, top_row_y, -1.0),
-                    Slot(SlotId::Draw),
+                    Slot::Draw,
                     GlobalTransform::default(),
                 ));
             }
@@ -114,7 +111,7 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
                         ..default()
                     },
                     Transform::from_xyz(x, top_row_y, -1.0),
-                    Slot(SlotId::Home(i)),
+                    Slot::Home(i),
                     GlobalTransform::default(),
                 ));
             }
