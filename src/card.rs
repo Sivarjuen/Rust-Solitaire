@@ -1,10 +1,13 @@
-use crate::board::{BoardState, Slot};
+use crate::board::{BoardState, Col, DeckPosition, DrawPosition, Slot};
 use crate::deck::Deck;
 use crate::events::{HoverEnterEvent, HoverExitEvent};
-use crate::types::CardFilter;
-use crate::util::{HoverState, Hoverable};
+use crate::types::{
+    CardFilter, CardHoverItem, DeckCardFilter, DeckSlotFilter, DrawCardFilter, DrawSlotFilter,
+};
+use crate::util::{HoverState, Hoverable, MoveTo};
 use bevy::asset::LoadState;
 use bevy::prelude::*;
+use std::f32::consts::{FRAC_PI_2, PI};
 use strum_macros::EnumIter;
 
 pub const CARD_WIDTH: f32 = 352.0;
@@ -18,13 +21,15 @@ impl Plugin for CardPlugin {
         app.init_resource::<Deck>()
             .init_resource::<AssetsLoading>()
             .add_systems(Startup, init_load_card_assets)
-            .add_systems(PostStartup, setup_cards)
+            .add_systems(PostStartup, (setup_cards, setup_deck_cards).chain())
             .add_systems(
                 Update,
                 (
                     check_assets_ready.run_if(resource_exists::<AssetsLoading>),
                     handle_hover_enter,
                     handle_hover_exit,
+                    handle_deck_click,
+                    handle_flip,
                 ),
             );
     }
@@ -172,15 +177,16 @@ fn setup_cards(
     mut board_state: ResMut<BoardState>,
     mut deck: ResMut<Deck>,
     server: Res<AssetServer>,
-    slots: Query<(&Transform, &Slot)>,
+    slots: Query<(&Transform, &Col), With<Slot>>,
 ) {
     let play_piles = &mut board_state.play_piles;
     let mut target_positions = vec![Vec3::default(); play_piles.len()];
+
     for (slot_transform, slot) in slots.iter() {
-        if let Slot::Play(n) = slot {
-            target_positions[*n as usize] = slot_transform.translation;
-        }
+        let index = slot.0 as usize;
+        target_positions[index] = slot_transform.translation;
     }
+
     for i in 0..play_piles.len() {
         let y_offset = (i * 40) as f32;
         for j in i..play_piles.len() {
@@ -202,9 +208,106 @@ fn setup_cards(
                 CardBundle::new(&drawn_card, &server, transform),
                 Hoverable,
                 HoverState::default(),
+                Col(j as u32),
             ));
 
             play_piles[j].push(drawn_card);
+        }
+    }
+}
+
+fn setup_deck_cards(
+    mut commands: Commands,
+    deck: Res<Deck>,
+    server: Res<AssetServer>,
+    slots: Query<&Transform, DeckSlotFilter>,
+) {
+    let deck_position = slots.single().translation;
+
+    let cards = deck.get_cards();
+    for (i, card) in cards.iter().enumerate() {
+        let transform = Transform::from_xyz(deck_position.x, deck_position.y, i as f32);
+
+        commands.spawn((
+            CardBundle::new(card, &server, transform),
+            Hoverable,
+            HoverState::default(),
+            DeckPosition,
+        ));
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn handle_deck_click(
+    mut commands: Commands,
+    mut deck: ResMut<Deck>,
+    deck_slot: Query<&Transform, DeckSlotFilter>,
+    draw_slot: Query<&Transform, DrawSlotFilter>,
+    input: Res<ButtonInput<MouseButton>>,
+    mut deck_card_q: Query<CardHoverItem, DeckCardFilter>,
+    mut draw_card_q: Query<CardHoverItem, DrawCardFilter>,
+    mut hover_exit_writer: EventWriter<HoverExitEvent>,
+    server: Res<AssetServer>,
+) {
+    if input.just_pressed(MouseButton::Left) {
+        let reset_deck = deck.is_empty() && !deck.get_drawn_cards().is_empty();
+        if reset_deck {
+            // TODO - check if mouse is in deck position
+            for (entity, mut transform, mut sprite, _, mut card) in draw_card_q.iter_mut() {
+                let deck_position = deck_slot.single().translation;
+                let current_z = transform.translation.z;
+                transform.translation = Vec3::new(
+                    deck_position.x,
+                    deck_position.y,
+                    deck.get_drawn_cards().len() as f32 - current_z,
+                );
+
+                commands
+                    .entity(entity)
+                    .remove::<DrawPosition>()
+                    .remove::<MoveTo>()
+                    .insert(DeckPosition);
+                card.flipped = true;
+                sprite.image = card.back_asset(&server);
+            }
+            deck.reset();
+        } else {
+            for (entity, mut transform, _, mut hover_state, card) in deck_card_q.iter_mut() {
+                if hover_state.hovering {
+                    let Some(top_card) = deck.draw() else {
+                        continue;
+                    };
+                    if top_card != *card {
+                        continue;
+                    }
+
+                    hover_state.hovering = false;
+                    hover_exit_writer.send(HoverExitEvent(entity));
+
+                    let draw_position = draw_slot.single().translation;
+                    transform.translation.z = 100.0;
+                    let target_position = Vec3::new(
+                        draw_position.x,
+                        draw_position.y,
+                        deck.get_drawn_cards().len() as f32,
+                    );
+
+                    commands
+                        .entity(entity)
+                        .remove::<DeckPosition>()
+                        .insert(DrawPosition)
+                        .insert(MoveTo {
+                            target: target_position,
+                            speed: 400.0,
+                        })
+                        .insert(Flipping {
+                            speed: PI * 3.0,
+                            flipped: false,
+                            progress: 0.0,
+                        });
+                    break;
+                }
+            }
         }
     }
 }
@@ -227,6 +330,46 @@ fn handle_hover_exit(
     for HoverExitEvent(entity) in events.read() {
         if let Ok(mut transform) = query.get_mut(*entity) {
             transform.scale = Vec3::splat(1.0);
+        }
+    }
+}
+
+#[derive(Component)]
+struct Flipping {
+    speed: f32,
+    flipped: bool,
+    progress: f32,
+}
+
+fn handle_flip(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(
+        Entity,
+        &mut Transform,
+        &mut Flipping,
+        &mut Sprite,
+        &mut Card,
+    )>,
+    server: Res<AssetServer>,
+) {
+    for (entity, mut transform, mut flipping, mut sprite, mut card) in query.iter_mut() {
+        let delta_rotation = flipping.speed * time.delta_secs();
+        flipping.progress += delta_rotation;
+        transform.rotation = Quat::from_rotation_y(flipping.progress);
+
+        if !flipping.flipped && flipping.progress >= FRAC_PI_2 {
+            sprite.image = card.asset(&server);
+            card.flipped = false;
+            flipping.flipped = true;
+
+            transform.scale.x *= -1.0;
+        }
+
+        if flipping.progress >= PI {
+            transform.rotation = Quat::IDENTITY;
+            transform.scale.x = transform.scale.x.abs();
+            commands.entity(entity).remove::<Flipping>();
         }
     }
 }

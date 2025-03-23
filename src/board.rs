@@ -26,13 +26,20 @@ impl Default for BoardState {
     }
 }
 
-#[derive(Component, PartialEq, Debug)]
-pub enum Slot {
-    Deck,
-    Draw,
-    Home(u32),
-    Play(u32),
-}
+#[derive(Component, PartialEq)]
+pub struct DeckPosition;
+
+#[derive(Component, PartialEq)]
+pub struct DrawPosition;
+
+#[derive(Component, PartialEq)]
+pub struct Home(pub u32);
+
+#[derive(Component, PartialEq)]
+pub struct Col(pub u32);
+
+#[derive(Component, PartialEq)]
+pub struct Slot;
 
 fn setup_background(mut commands: Commands, asset_server: Res<AssetServer>) {
     let texture_handle = asset_server.load("bg.png");
@@ -73,7 +80,8 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
                 ..default()
             },
             Transform::from_xyz(x, bottom_row_y, -1.0),
-            Slot::Play(i),
+            Slot,
+            Col(i),
             GlobalTransform::default(),
         ));
 
@@ -89,14 +97,16 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
                         ..default()
                     },
                     Transform::from_xyz(x, top_row_y, -1.0),
-                    Slot::Deck,
+                    Slot,
+                    DeckPosition,
                     GlobalTransform::default(),
                 ));
             }
             1 => {
                 commands.spawn((
                     Transform::from_xyz(x, top_row_y, -1.0),
-                    Slot::Draw,
+                    Slot,
+                    DrawPosition,
                     GlobalTransform::default(),
                 ));
             }
@@ -111,7 +121,8 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
                         ..default()
                     },
                     Transform::from_xyz(x, top_row_y, -1.0),
-                    Slot::Home(i),
+                    Slot,
+                    Home(i),
                     GlobalTransform::default(),
                 ));
             }

@@ -29,6 +29,9 @@ impl Deck {
     pub fn get_cards(&self) -> &Vec<Card> {
         &self.cards
     }
+    pub fn get_drawn_cards(&self) -> &Vec<Card> {
+        &self.drawn
+    }
 
     fn populate() -> Vec<Card> {
         let mut cards = Vec::new();
