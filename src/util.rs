@@ -1,6 +1,6 @@
-use bevy::prelude::*;
-use crate::card::Card;
 use crate::events::{HoverEnterEvent, HoverExitEvent};
+use crate::types::{CardFilter, CardHoverItem, CardSimpleHoverItem};
+use bevy::prelude::*;
 
 pub struct UtilPlugin;
 
@@ -21,7 +21,7 @@ pub struct HoverState {
 fn hover_card_system(
     window: Query<&Window>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
-    mut card_q: Query<(Entity, &GlobalTransform, &Sprite, &mut HoverState), (With<Hoverable>, With<Card>)>,
+    mut card_q: Query<CardHoverItem, CardFilter>,
     mut hover_enter_writer: EventWriter<HoverEnterEvent>,
     mut hover_exit_writer: EventWriter<HoverExitEvent>,
 ) {
@@ -80,7 +80,7 @@ fn hover_card_system(
 
 // Handle hover exit if cursor leaves window
 fn reset_hover_flags(
-    mut query: Query<(Entity, &mut HoverState), (With<Hoverable>, With<Card>)>,
+    mut query: Query<CardSimpleHoverItem, CardFilter>,
     windows: Query<&Window>,
     mut hover_exit_writer: EventWriter<HoverExitEvent>,
 ) {

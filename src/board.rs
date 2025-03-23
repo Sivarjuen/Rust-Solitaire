@@ -100,7 +100,7 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
                     GlobalTransform::default(),
                 ));
             }
-            3 | 4 | 5 | 6 => {
+            3..=6 => {
                 commands.spawn((
                     Sprite {
                         custom_size: Some(Vec2 {

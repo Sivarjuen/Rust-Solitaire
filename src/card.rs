@@ -1,10 +1,11 @@
-use bevy::asset::LoadState;
-use bevy::prelude::*;
-use strum_macros::EnumIter;
 use crate::board::{BoardState, Slot};
 use crate::deck::Deck;
 use crate::events::{HoverEnterEvent, HoverExitEvent};
+use crate::types::CardFilter;
 use crate::util::{HoverState, Hoverable};
+use bevy::asset::LoadState;
+use bevy::prelude::*;
+use strum_macros::EnumIter;
 
 pub const CARD_WIDTH: f32 = 352.0;
 pub const CARD_HEIGHT: f32 = 512.0;
@@ -23,7 +24,7 @@ impl Plugin for CardPlugin {
                 (
                     check_assets_ready.run_if(resource_exists::<AssetsLoading>),
                     handle_hover_enter,
-                    handle_hover_exit
+                    handle_hover_exit,
                 ),
             );
     }
@@ -124,7 +125,6 @@ impl CardBundle {
                 ..default()
             },
             transform,
-
         }
     }
 }
@@ -172,21 +172,18 @@ fn setup_cards(
     mut board_state: ResMut<BoardState>,
     mut deck: ResMut<Deck>,
     server: Res<AssetServer>,
-    slots: Query<(&Transform, &Slot)>
+    slots: Query<(&Transform, &Slot)>,
 ) {
     let play_piles = &mut board_state.play_piles;
     let mut target_positions = vec![Vec3::default(); play_piles.len()];
-    for  (slot_transform, slot) in slots.iter() {
-        match slot {
-            Slot::Play(n) => {
-                target_positions[*n as usize] = slot_transform.translation.clone();
-            },
-            _ => ()
+    for (slot_transform, slot) in slots.iter() {
+        if let Slot::Play(n) = slot {
+            target_positions[*n as usize] = slot_transform.translation;
         }
     }
     for i in 0..play_piles.len() {
         let y_offset = (i * 40) as f32;
-        for j in i.. play_piles.len() {
+        for j in i..play_piles.len() {
             let Some(mut drawn_card) = deck.play() else {
                 return;
             };
@@ -198,17 +195,13 @@ fn setup_cards(
             let transform = Transform::from_xyz(
                 target_positions[j].x,
                 target_positions[j].y - y_offset,
-                i as f32
+                i as f32,
             );
 
             commands.spawn((
-                CardBundle::new(
-                    &drawn_card,
-                    &server,
-                    transform
-                ),
+                CardBundle::new(&drawn_card, &server, transform),
                 Hoverable,
-                HoverState::default()
+                HoverState::default(),
             ));
 
             play_piles[j].push(drawn_card);
@@ -218,7 +211,7 @@ fn setup_cards(
 
 fn handle_hover_enter(
     mut events: EventReader<HoverEnterEvent>,
-    mut query: Query<&mut Transform>,
+    mut query: Query<&mut Transform, CardFilter>,
 ) {
     for HoverEnterEvent(entity) in events.read() {
         if let Ok(mut transform) = query.get_mut(*entity) {
@@ -229,7 +222,7 @@ fn handle_hover_enter(
 
 fn handle_hover_exit(
     mut events: EventReader<HoverExitEvent>,
-    mut query: Query<&mut Transform>
+    mut query: Query<&mut Transform, CardFilter>,
 ) {
     for HoverExitEvent(entity) in events.read() {
         if let Ok(mut transform) = query.get_mut(*entity) {

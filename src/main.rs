@@ -3,6 +3,7 @@ mod card;
 mod config;
 mod deck;
 mod events;
+mod types;
 mod util;
 
 use board::BoardPlugin;
@@ -32,5 +33,5 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2d::default());
+    commands.spawn(Camera2d);
 }
