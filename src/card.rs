@@ -35,19 +35,19 @@ pub enum Suit {
 
 #[derive(PartialEq, PartialOrd, Debug, Clone, EnumIter)]
 pub enum Rank {
-    ACE,
-    TWO,
-    THREE,
-    FOUR,
-    FIVE,
-    SIX,
-    SEVEN,
-    EIGHT,
-    NINE,
-    TEN,
-    JACK,
-    QUEEN,
-    KING,
+    Ace,
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Jack,
+    Queen,
+    King,
 }
 
 #[derive(Component, PartialEq, PartialOrd, Debug, Clone)]
@@ -67,19 +67,19 @@ impl Card {
         };
 
         let suffix = match self.rank {
-            Rank::ACE => "ace".to_string(),
-            Rank::TWO => "02".to_string(),
-            Rank::THREE => "03".to_string(),
-            Rank::FOUR => "04".to_string(),
-            Rank::FIVE => "05".to_string(),
-            Rank::SIX => "06".to_string(),
-            Rank::SEVEN => "07".to_string(),
-            Rank::EIGHT => "08".to_string(),
-            Rank::NINE => "09".to_string(),
-            Rank::TEN => "10".to_string(),
-            Rank::JACK => "jack".to_string(),
-            Rank::QUEEN => "queen".to_string(),
-            Rank::KING => "king".to_string(),
+            Rank::Ace => "ace".to_string(),
+            Rank::Two => "02".to_string(),
+            Rank::Three => "03".to_string(),
+            Rank::Four => "04".to_string(),
+            Rank::Five => "05".to_string(),
+            Rank::Six => "06".to_string(),
+            Rank::Seven => "07".to_string(),
+            Rank::Eight => "08".to_string(),
+            Rank::Nine => "09".to_string(),
+            Rank::Ten => "10".to_string(),
+            Rank::Jack => "jack".to_string(),
+            Rank::Queen => "queen".to_string(),
+            Rank::King => "king".to_string(),
         };
 
         let resource_path = format!("{}_{}.png", prefix, suffix);
@@ -156,7 +156,7 @@ fn check_assets_ready(
 
         commands.spawn(CardBundle::new(
             Card {
-                rank: Rank::KING,
+                rank: Rank::King,
                 suit: Suit::Diamonds,
                 flipped: false,
             },
@@ -165,7 +165,7 @@ fn check_assets_ready(
         ));
         commands.spawn(CardBundle::new(
             Card {
-                rank: Rank::QUEEN,
+                rank: Rank::Nine,
                 suit: Suit::Spades,
                 flipped: false,
             },
