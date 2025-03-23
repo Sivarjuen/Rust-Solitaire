@@ -35,6 +35,7 @@ impl Deck {
                 cards.push(Card {
                     rank: rank.clone(),
                     suit: suit.clone(),
+                    flipped: true,
                 })
             }
         }

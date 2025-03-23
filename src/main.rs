@@ -1,7 +1,9 @@
+mod board;
 mod card;
 mod config;
 mod deck;
 
+use board::BoardPlugin;
 use card::CardPlugin;
 
 use bevy::prelude::*;
@@ -19,7 +21,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins(CardPlugin)
+        .add_plugins((BoardPlugin, CardPlugin))
         .insert_resource(ClearColor(BG_COLOUR))
         .add_systems(Startup, setup)
         .run();

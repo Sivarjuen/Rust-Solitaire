@@ -4,6 +4,10 @@ use strum_macros::EnumIter;
 
 use crate::deck::Deck;
 
+pub const CARD_WIDTH: f32 = 352.0;
+pub const CARD_HEIGHT: f32 = 512.0;
+pub const CARD_SCALE: f32 = 0.2;
+
 pub struct CardPlugin;
 
 impl Plugin for CardPlugin {
@@ -13,7 +17,10 @@ impl Plugin for CardPlugin {
             .add_systems(Startup, init_load_card_assets)
             .add_systems(
                 Update,
-                check_assets_ready.run_if(resource_exists::<AssetsLoading>),
+                (
+                    check_assets_ready.run_if(resource_exists::<AssetsLoading>),
+                    change_sprite_image,
+                ),
             );
     }
 }
@@ -47,6 +54,7 @@ pub enum Rank {
 pub struct Card {
     pub rank: Rank,
     pub suit: Suit,
+    pub flipped: bool,
 }
 
 impl Card {
@@ -77,6 +85,10 @@ impl Card {
         let resource_path = format!("{}_{}.png", prefix, suffix);
         asset_server.load(resource_path)
     }
+
+    pub fn back_asset(&self, asset_server: &Res<AssetServer>) -> Handle<Image> {
+        asset_server.load("back01.png")
+    }
 }
 
 #[derive(Resource, Default, Debug)]
@@ -94,7 +106,10 @@ impl CardBundle {
         CardBundle {
             card: card.clone(),
             sprite: Sprite {
-                custom_size: Some(Vec2 { x: 200.0, y: 300.0 }),
+                custom_size: Some(Vec2 {
+                    x: CARD_WIDTH * CARD_SCALE,
+                    y: CARD_HEIGHT * CARD_SCALE,
+                }),
                 image: card.asset(asset_server),
                 ..default()
             },
@@ -143,6 +158,7 @@ fn check_assets_ready(
             Card {
                 rank: Rank::KING,
                 suit: Suit::Diamonds,
+                flipped: false,
             },
             &server,
             Transform::default(),
@@ -151,9 +167,30 @@ fn check_assets_ready(
             Card {
                 rank: Rank::QUEEN,
                 suit: Suit::Spades,
+                flipped: false,
             },
             &server,
             Transform::from_xyz(100.0, 0.0, 0.0),
         ));
+    }
+}
+
+// FIXME: this is temporary
+fn change_sprite_image(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    asset_server: Res<AssetServer>,
+    mut query: Query<(&mut Sprite, &mut Card)>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        for (mut sprite, mut card) in query.iter_mut() {
+            let mut new_texture = card.asset(&asset_server);
+            if card.flipped {
+                new_texture = card.back_asset(&asset_server);
+            }
+            card.flipped = !card.flipped;
+            sprite.image = new_texture.clone();
+        }
+
+        println!("Sprite image changed!");
     }
 }
