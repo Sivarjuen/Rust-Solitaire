@@ -4,12 +4,12 @@ mod config;
 mod deck;
 mod events;
 mod types;
-mod util;
+mod utils;
 
 use board::BoardPlugin;
 use card::CardPlugin;
 use events::EventPlugin;
-use util::UtilPlugin;
+use utils::UtilsPlugin;
 
 use bevy::prelude::*;
 use config::*;
@@ -26,7 +26,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins((EventPlugin, BoardPlugin, CardPlugin, UtilPlugin))
+        .add_plugins((EventPlugin, BoardPlugin, CardPlugin, UtilsPlugin))
         .insert_resource(ClearColor(BG_COLOUR))
         .add_systems(Startup, setup)
         .run();

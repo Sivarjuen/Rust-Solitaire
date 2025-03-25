@@ -4,10 +4,13 @@ use crate::events::{HoverEnterEvent, HoverExitEvent};
 use crate::types::{
     CardFilter, CardHoverItem, DeckCardFilter, DeckSlotFilter, DrawCardFilter, DrawSlotFilter,
 };
-use crate::util::{HoverState, Hoverable, MoveTo};
+use crate::utils::dragging::Draggable;
+use crate::utils::flipping::Flipping;
+use crate::utils::hovering::{HoverState, Hoverable};
+use crate::utils::moveto::MoveTo;
 use bevy::asset::LoadState;
 use bevy::prelude::*;
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::f32::consts::PI;
 use strum_macros::EnumIter;
 
 pub const CARD_WIDTH: f32 = 352.0;
@@ -29,7 +32,6 @@ impl Plugin for CardPlugin {
                     handle_hover_enter,
                     handle_hover_exit,
                     handle_deck_click,
-                    handle_flip,
                 ),
             );
     }
@@ -209,6 +211,7 @@ fn setup_cards(
                 Hoverable,
                 HoverState::default(),
                 Col(j as u32),
+                Draggable,
             ));
 
             play_piles[j].push(drawn_card);
@@ -266,6 +269,7 @@ fn handle_deck_click(
                     .entity(entity)
                     .remove::<DrawPosition>()
                     .remove::<MoveTo>()
+                    .remove::<Draggable>()
                     .insert(DeckPosition);
                 card.flipped = true;
                 sprite.image = card.back_asset(&server);
@@ -300,6 +304,7 @@ fn handle_deck_click(
                             target: target_position,
                             speed: 400.0,
                         })
+                        .insert(Draggable)
                         .insert(Flipping {
                             speed: PI * 3.0,
                             flipped: false,
@@ -330,46 +335,6 @@ fn handle_hover_exit(
     for HoverExitEvent(entity) in events.read() {
         if let Ok(mut transform) = query.get_mut(*entity) {
             transform.scale = Vec3::splat(1.0);
-        }
-    }
-}
-
-#[derive(Component)]
-struct Flipping {
-    speed: f32,
-    flipped: bool,
-    progress: f32,
-}
-
-fn handle_flip(
-    time: Res<Time>,
-    mut commands: Commands,
-    mut query: Query<(
-        Entity,
-        &mut Transform,
-        &mut Flipping,
-        &mut Sprite,
-        &mut Card,
-    )>,
-    server: Res<AssetServer>,
-) {
-    for (entity, mut transform, mut flipping, mut sprite, mut card) in query.iter_mut() {
-        let delta_rotation = flipping.speed * time.delta_secs();
-        flipping.progress += delta_rotation;
-        transform.rotation = Quat::from_rotation_y(flipping.progress);
-
-        if !flipping.flipped && flipping.progress >= FRAC_PI_2 {
-            sprite.image = card.asset(&server);
-            card.flipped = false;
-            flipping.flipped = true;
-
-            transform.scale.x *= -1.0;
-        }
-
-        if flipping.progress >= PI {
-            transform.rotation = Quat::IDENTITY;
-            transform.scale.x = transform.scale.x.abs();
-            commands.entity(entity).remove::<Flipping>();
         }
     }
 }

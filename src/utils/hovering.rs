@@ -1,17 +1,7 @@
 use crate::events::{HoverEnterEvent, HoverExitEvent};
 use crate::types::{CardFilter, CardHoverItem, CardSimpleHoverItem};
+use bevy::math::Vec2;
 use bevy::prelude::*;
-
-pub struct UtilPlugin;
-
-impl Plugin for UtilPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (hover_card_system, reset_hover_flags, handle_move_to),
-        );
-    }
-}
 
 #[derive(Component)]
 pub struct Hoverable;
@@ -21,13 +11,7 @@ pub struct HoverState {
     pub hovering: bool,
 }
 
-#[derive(Component)]
-pub struct MoveTo {
-    pub target: Vec3,
-    pub speed: f32,
-}
-
-fn hover_card_system(
+pub fn hover_card_system(
     window: Query<&Window>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
     mut card_q: Query<CardHoverItem, CardFilter>,
@@ -88,7 +72,7 @@ fn hover_card_system(
 }
 
 // Handle hover exit if cursor leaves window
-fn reset_hover_flags(
+pub fn reset_hover_flags(
     mut query: Query<CardSimpleHoverItem, CardFilter>,
     windows: Query<&Window>,
     mut hover_exit_writer: EventWriter<HoverExitEvent>,
@@ -100,25 +84,6 @@ fn reset_hover_flags(
                 hover_state.hovering = false;
                 hover_exit_writer.send(HoverExitEvent(entity));
             }
-        }
-    }
-}
-
-fn handle_move_to(
-    time: Res<Time>,
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut Transform, &MoveTo)>,
-) {
-    for (entity, mut transform, move_to) in query.iter_mut() {
-        let direction = move_to.target - transform.translation;
-        let distance = direction.length();
-
-        if distance < 10.0 {
-            transform.translation = move_to.target;
-            commands.entity(entity).remove::<MoveTo>();
-        } else {
-            let movement = direction.normalize() * move_to.speed * time.delta_secs();
-            transform.translation += movement;
         }
     }
 }

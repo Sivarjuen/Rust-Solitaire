@@ -1,6 +1,6 @@
 use crate::board::{Col, DeckPosition, DrawPosition, Home, Slot};
 use crate::card::Card;
-use crate::util::{HoverState, Hoverable};
+use crate::utils::hovering::{HoverState, Hoverable};
 use bevy::prelude::*;
 
 pub type CardFilter = (With<Hoverable>, With<Card>, Without<Slot>);
