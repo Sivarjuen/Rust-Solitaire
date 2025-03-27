@@ -1,3 +1,5 @@
+use crate::board::BoardState;
+use crate::card::Card;
 use crate::utils::hovering::HoverState;
 use bevy::prelude::*;
 
@@ -12,10 +14,14 @@ pub struct Dragging {
 
 pub fn start_drag_system(
     buttons: Res<ButtonInput<MouseButton>>,
+    board_state: Res<BoardState>,
     windows: Query<&Window>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
     mut commands: Commands,
-    mut q_cards: Query<(Entity, &GlobalTransform, &mut Transform, &HoverState), With<Draggable>>,
+    mut q_cards: Query<
+        (Entity, &GlobalTransform, &mut Transform, &HoverState, &Card),
+        With<Draggable>,
+    >,
 ) {
     if !buttons.just_pressed(MouseButton::Left) {
         return;
@@ -29,8 +35,33 @@ pub fn start_drag_system(
             .viewport_to_world(camera_transform, cursor_position)
             .map(|ray| ray.origin.truncate())
         {
-            for (entity, g_transform, mut transform, hover_state) in q_cards.iter_mut() {
+            let mut target_cards = vec![];
+            let pile_groups = [&board_state.play_piles, &board_state.home_piles];
+
+            'outer: for (_, _, _, hover_state, card) in q_cards.iter() {
                 if hover_state.hovering {
+                    for piles in pile_groups {
+                        for pile in piles {
+                            let mut add_card = false;
+                            for pile_card in pile {
+                                if add_card {
+                                    target_cards.push(pile_card);
+                                } else if card == pile_card {
+                                    target_cards.push(pile_card);
+                                    add_card = true
+                                }
+                            }
+                            if add_card {
+                                break 'outer;
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (entity, g_transform, mut transform, hover_state, card) in q_cards.iter_mut() {
+                if target_cards.contains(&card) || (target_cards.is_empty() && hover_state.hovering)
+                {
                     let card_pos = g_transform.translation().truncate();
                     let offset = card_pos - world_position;
 
@@ -40,8 +71,6 @@ pub fn start_drag_system(
                     });
 
                     transform.translation.z += 100.0;
-
-                    break;
                 }
             }
         }
