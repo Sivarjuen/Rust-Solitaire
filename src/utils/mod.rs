@@ -4,7 +4,7 @@ pub mod flipping;
 pub mod hovering;
 pub mod moveto;
 
-use crate::utils::cursor::{Cursor, update_cursor};
+use crate::utils::cursor::{Cursor, update_cursor, update_cursor_icon};
 use crate::utils::dragging::{drag_system, start_drag_system, stop_drag_system};
 use crate::utils::flipping::handle_flip;
 use crate::utils::hovering::{hover_card_system, reset_hover_flags};
@@ -20,6 +20,7 @@ impl Plugin for UtilsPlugin {
             .add_systems(
                 Update,
                 (
+                    update_cursor_icon,
                     hover_card_system,
                     reset_hover_flags,
                     handle_flip,
@@ -30,4 +31,11 @@ impl Plugin for UtilsPlugin {
                 ),
             );
     }
+}
+
+pub fn in_region(pos: Vec2, region_pos: Vec2, region_size: Vec2) -> bool {
+    let half_size = region_size / 2.0;
+    let min = region_pos - half_size;
+    let max = region_pos + half_size;
+    pos.x >= min.x && pos.x <= max.x && pos.y >= min.y && pos.y <= max.y
 }
