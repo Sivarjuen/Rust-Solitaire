@@ -4,6 +4,7 @@ use crate::events::{HoverEnterEvent, HoverExitEvent};
 use crate::types::{
     CardFilter, CardHoverItem, DeckCardFilter, DeckSlotFilter, DrawCardFilter, DrawSlotFilter,
 };
+use crate::utils::cursor::Cursor;
 use crate::utils::dragging::Draggable;
 use crate::utils::flipping::Flipping;
 use crate::utils::hovering::{HoverState, Hoverable};
@@ -244,20 +245,35 @@ fn setup_deck_cards(
 fn handle_deck_click(
     mut commands: Commands,
     mut deck: ResMut<Deck>,
-    deck_slot: Query<&Transform, DeckSlotFilter>,
+    deck_slot: Query<(&Transform, &Sprite), DeckSlotFilter>,
     draw_slot: Query<&Transform, DrawSlotFilter>,
     input: Res<ButtonInput<MouseButton>>,
     mut deck_card_q: Query<CardHoverItem, DeckCardFilter>,
     mut draw_card_q: Query<CardHoverItem, DrawCardFilter>,
     mut hover_exit_writer: EventWriter<HoverExitEvent>,
     server: Res<AssetServer>,
+    cursor: Res<Cursor>,
 ) {
     if input.just_pressed(MouseButton::Left) {
         let reset_deck = deck.is_empty() && !deck.get_drawn_cards().is_empty();
         if reset_deck {
-            // TODO - check if mouse is in deck position
+            let (deck_transform, deck_sprite) = deck_slot.single();
+            let deck_position = deck_transform.translation;
+            if let Some(cursor_position) = cursor.position {
+                if let Some(sprite_size) = deck_sprite.custom_size {
+                    let half_width = sprite_size.x / 2.0;
+                    let half_height = sprite_size.y / 2.0;
+
+                    if !(cursor_position.x > deck_position.x - half_width
+                        && cursor_position.x < deck_position.x + half_width
+                        && cursor_position.y > deck_position.y - half_height
+                        && cursor_position.y < deck_position.y + half_height)
+                    {
+                        return;
+                    }
+                }
+            }
             for (entity, mut transform, mut sprite, _, mut card) in draw_card_q.iter_mut() {
-                let deck_position = deck_slot.single().translation;
                 let current_z = transform.translation.z;
                 transform.translation = Vec3::new(
                     deck_position.x,
