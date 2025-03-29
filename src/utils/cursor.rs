@@ -1,4 +1,7 @@
+use crate::utils::hovering::{HoverState, Hoverable};
 use bevy::prelude::*;
+use bevy::winit::WinitWindows;
+use winit::window::{Cursor as WinitCursor, CursorIcon};
 
 #[derive(Resource, Default, Debug, Clone, Copy)]
 pub struct Cursor {
@@ -24,4 +27,25 @@ pub fn update_cursor(
     if !found_cursor_position {
         cursor_world.position = None;
     }
+}
+
+pub fn update_cursor_icon(
+    winit_windows: NonSend<WinitWindows>,
+    windows: Query<Entity, With<Window>>,
+    query: Query<&HoverState, With<Hoverable>>,
+) {
+    let window_entity = windows.single();
+    let Some(winit_window) = winit_windows.get_window(window_entity) else {
+        return;
+    };
+
+    let hovered = query.iter().any(|h| h.hovering);
+
+    let icon = if hovered {
+        CursorIcon::Pointer
+    } else {
+        CursorIcon::Default
+    };
+
+    winit_window.set_cursor(WinitCursor::Icon(icon));
 }

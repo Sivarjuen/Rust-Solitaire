@@ -8,6 +8,7 @@ use crate::utils::cursor::Cursor;
 use crate::utils::dragging::Draggable;
 use crate::utils::flipping::Flipping;
 use crate::utils::hovering::{HoverState, Hoverable};
+use crate::utils::in_region;
 use crate::utils::moveto::MoveTo;
 use bevy::asset::LoadState;
 use bevy::prelude::*;
@@ -261,14 +262,7 @@ fn handle_deck_click(
             let deck_position = deck_transform.translation;
             if let Some(cursor_position) = cursor.position {
                 if let Some(sprite_size) = deck_sprite.custom_size {
-                    let half_width = sprite_size.x / 2.0;
-                    let half_height = sprite_size.y / 2.0;
-
-                    if !(cursor_position.x > deck_position.x - half_width
-                        && cursor_position.x < deck_position.x + half_width
-                        && cursor_position.y > deck_position.y - half_height
-                        && cursor_position.y < deck_position.y + half_height)
-                    {
+                    if !(in_region(cursor_position, deck_position.xy(), sprite_size)) {
                         return;
                     }
                 }

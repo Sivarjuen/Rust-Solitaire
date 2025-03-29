@@ -1,6 +1,7 @@
 use crate::events::{HoverEnterEvent, HoverExitEvent};
 use crate::types::{CardFilter, CardHoverItem, CardSimpleHoverItem};
 use crate::utils::cursor::Cursor;
+use crate::utils::in_region;
 use bevy::math::Vec2;
 use bevy::prelude::*;
 
@@ -24,14 +25,7 @@ pub fn hover_card_system(
         for (entity, transform, sprite, _, _) in card_q.iter_mut() {
             let position = transform.translation.truncate();
             let size = sprite.custom_size.unwrap_or(Vec2::ONE);
-            let half_size = size / 2.0;
-            let min = position - half_size;
-            let max = position + half_size;
-
-            let is_hovering = cursor_world.x >= min.x
-                && cursor_world.x <= max.x
-                && cursor_world.y >= min.y
-                && cursor_world.y <= max.y;
+            let is_hovering = in_region(cursor_world, position, size);
 
             if is_hovering {
                 candidates.push((transform.translation.z, entity));
