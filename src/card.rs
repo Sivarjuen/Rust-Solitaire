@@ -4,11 +4,9 @@ use crate::events::{HoverEnterEvent, HoverExitEvent};
 use crate::types::{
     CardFilter, CardHoverItem, DeckCardFilter, DeckSlotFilter, DrawCardFilter, DrawSlotFilter,
 };
-use crate::utils::cursor::Cursor;
 use crate::utils::dragging::Draggable;
 use crate::utils::flipping::Flipping;
 use crate::utils::hovering::{HoverState, Hoverable};
-use crate::utils::in_region;
 use crate::utils::moveto::MoveTo;
 use bevy::asset::LoadState;
 use bevy::prelude::*;
@@ -246,26 +244,21 @@ fn setup_deck_cards(
 fn handle_deck_click(
     mut commands: Commands,
     mut deck: ResMut<Deck>,
-    deck_slot: Query<(&Transform, &Sprite), DeckSlotFilter>,
+    deck_slot: Query<(&Transform, &HoverState), DeckSlotFilter>,
     draw_slot: Query<&Transform, DrawSlotFilter>,
     input: Res<ButtonInput<MouseButton>>,
     mut deck_card_q: Query<CardHoverItem, DeckCardFilter>,
     mut draw_card_q: Query<CardHoverItem, DrawCardFilter>,
     mut hover_exit_writer: EventWriter<HoverExitEvent>,
     server: Res<AssetServer>,
-    cursor: Res<Cursor>,
 ) {
     if input.just_pressed(MouseButton::Left) {
         let reset_deck = deck.is_empty() && !deck.get_drawn_cards().is_empty();
         if reset_deck {
-            let (deck_transform, deck_sprite) = deck_slot.single();
-            let deck_position = deck_transform.translation;
-            if let Some(cursor_position) = cursor.position {
-                if let Some(sprite_size) = deck_sprite.custom_size {
-                    if !(in_region(cursor_position, deck_position.xy(), sprite_size)) {
-                        return;
-                    }
-                }
+            let (transform, hover_state) = deck_slot.single();
+            let deck_position = transform.translation;
+            if !hover_state.hovering {
+                return;
             }
             for (entity, mut transform, mut sprite, _, mut card) in draw_card_q.iter_mut() {
                 let current_z = transform.translation.z;

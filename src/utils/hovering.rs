@@ -1,7 +1,9 @@
+use crate::board::{Col, DeckPosition, Home, Slot};
 use crate::events::{HoverEnterEvent, HoverExitEvent};
-use crate::types::{CardFilter, CardHoverItem, CardSimpleHoverItem};
+use crate::types::{CardFilter, CardHoverItem, CardSimpleHoverItem, HoverItem};
 use crate::utils::cursor::Cursor;
-use crate::utils::in_region;
+use crate::utils::debug::draw_debug_box;
+use crate::utils::{DebugMode, in_region};
 use bevy::math::Vec2;
 use bevy::prelude::*;
 
@@ -69,6 +71,69 @@ pub fn reset_hover_flags(
                 hover_state.hovering = false;
                 hover_exit_writer.send(HoverExitEvent(entity));
             }
+        }
+    }
+}
+
+pub fn hover_deck_system(
+    cursor: Res<Cursor>,
+    mut deck_q: Query<HoverItem, (With<DeckPosition>, With<Hoverable>, With<Slot>)>,
+) {
+    let Some(cursor_world) = cursor.position else {
+        return;
+    };
+
+    for (_, transform, sprite, mut hover_state) in deck_q.iter_mut() {
+        let position = transform.translation.truncate();
+        let size = sprite.custom_size.unwrap_or(Vec2::ONE);
+        let is_hovering = in_region(cursor_world, position, size);
+
+        if is_hovering && !hover_state.hovering {
+            hover_state.hovering = true;
+        } else if !is_hovering && hover_state.hovering {
+            hover_state.hovering = false;
+        }
+    }
+}
+
+pub fn hover_play_slot_system(
+    cursor: Res<Cursor>,
+    mut slot_q: Query<
+        (HoverItem, Option<&Col>, Option<&Home>),
+        (With<Hoverable>, With<Slot>, Or<(With<Col>, With<Home>)>),
+    >,
+    mut hover_enter_writer: EventWriter<HoverEnterEvent>,
+    mut hover_exit_writer: EventWriter<HoverExitEvent>,
+    mut gizmos: Gizmos,
+    debug_mode: ResMut<DebugMode>,
+) {
+    let Some(cursor_world) = cursor.position else {
+        return;
+    };
+
+    for ((entity, transform, sprite, mut hover_state), col, home) in slot_q.iter_mut() {
+        let mut position = transform.translation.truncate();
+        let mut size = sprite.custom_size.unwrap_or(Vec2::ONE);
+        if col.is_some() {
+            position.y -= size.y * 2f32;
+            size.x *= 1.3;
+            size.y *= 5f32;
+        }
+        if home.is_some() {
+            size *= 1.3;
+        }
+
+        if debug_mode.enabled {
+            draw_debug_box(position, size, Color::srgb(1f32, 0f32, 0f32), &mut gizmos);
+        }
+        let is_hovering = in_region(cursor_world, position, size);
+
+        if is_hovering && !hover_state.hovering {
+            hover_state.hovering = true;
+            hover_enter_writer.send(HoverEnterEvent(entity));
+        } else if !is_hovering && hover_state.hovering {
+            hover_state.hovering = false;
+            hover_exit_writer.send(HoverExitEvent(entity));
         }
     }
 }

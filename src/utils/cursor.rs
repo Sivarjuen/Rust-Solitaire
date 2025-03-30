@@ -1,4 +1,6 @@
-use crate::utils::hovering::{HoverState, Hoverable};
+use crate::board::DeckPosition;
+use crate::card::Card;
+use crate::utils::hovering::HoverState;
 use bevy::prelude::*;
 use bevy::winit::WinitWindows;
 use winit::window::{Cursor as WinitCursor, CursorIcon};
@@ -32,7 +34,7 @@ pub fn update_cursor(
 pub fn update_cursor_icon(
     winit_windows: NonSend<WinitWindows>,
     windows: Query<Entity, With<Window>>,
-    query: Query<&HoverState, With<Hoverable>>,
+    query: Query<&HoverState, Or<(With<Card>, With<DeckPosition>)>>,
 ) {
     let window_entity = windows.single();
     let Some(winit_window) = winit_windows.get_window(window_entity) else {

@@ -33,3 +33,5 @@ pub type CardHoverItem<'w> = (
     &'w mut HoverState,
     &'w mut Card,
 );
+
+pub type HoverItem<'w> = (Entity, &'w Transform, &'w Sprite, &'w mut HoverState);

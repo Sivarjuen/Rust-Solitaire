@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::card::{CARD_HEIGHT, CARD_SCALE, CARD_WIDTH, Card};
+use crate::utils::hovering::{HoverState, Hoverable};
 
 pub struct BoardPlugin;
 
@@ -82,6 +83,8 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
             Transform::from_xyz(x, bottom_row_y, -1.0),
             Slot,
             Col(i),
+            Hoverable,
+            HoverState::default(),
             GlobalTransform::default(),
         ));
 
@@ -99,6 +102,8 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
                     Transform::from_xyz(x, top_row_y, -1.0),
                     Slot,
                     DeckPosition,
+                    Hoverable,
+                    HoverState::default(),
                     GlobalTransform::default(),
                 ));
             }
@@ -123,6 +128,8 @@ fn setup_slots(mut commands: Commands, windows: Query<&Window>, asset_server: Re
                     Transform::from_xyz(x, top_row_y, -1.0),
                     Slot,
                     Home(i),
+                    Hoverable,
+                    HoverState::default(),
                     GlobalTransform::default(),
                 ));
             }

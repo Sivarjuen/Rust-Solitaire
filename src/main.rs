@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 mod board;
 mod card;
 mod config;
